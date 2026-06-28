@@ -1,0 +1,1445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dark Lord's Dungeon</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
+:root{
+  --bg:#1a1210;--panel:#2a1f1a;--panel2:#3a2a22;
+  --border:#6b4c35;--border2:#8b6b4a;
+  --gold:#f0c040;--red:#e05050;--green:#60c060;--blue:#6090e0;
+  --text:#e8d5b0;--dim:#9a8570;
+  --tu:#5f5f5f;--tr:#8a8a8a;--th:#4f4f4f;
+  --xpc:#40e0a0;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);font-family:'Press Start 2P',monospace;color:var(--text);
+  min-height:100vh;display:flex;flex-direction:column;align-items:center;
+  padding:8px;gap:6px;zoom:1.4;}
+h1{font-size:13px;color:var(--gold);text-shadow:2px 2px 0 #8b6000,3px 3px 0 #5a3a00;
+   letter-spacing:2px;animation:flicker 3s infinite;}
+@keyframes flicker{0%,95%,100%{opacity:1}96%{opacity:.7}97%{opacity:1}98%{opacity:.8}}
+.game-wrap{display:flex;gap:10px;align-items:flex-start;justify-content:center;flex-wrap:wrap;}
+
+/* ── PLAYER PANEL ── */
+.ppanel{width:158px;background:var(--panel);border:3px solid var(--border);
+  border-radius:4px;padding:8px;box-shadow:inset 0 0 20px rgba(0,0,0,.5),3px 3px 0 #0a0806;flex-shrink:0;}
+.portrait{width:100%;aspect-ratio:1;background:#f0ead8;border:2px solid var(--border);
+  border-radius:2px;margin-bottom:6px;display:flex;align-items:center;justify-content:center;}
+.lvbadge{display:block;background:var(--border2);border:2px solid var(--gold);
+  padding:3px;font-size:7px;color:var(--gold);text-align:center;margin-bottom:4px;}
+.pname{font-size:8px;text-align:center;margin-bottom:5px;}
+.hlabel{font-size:7px;color:var(--dim);margin-bottom:3px;}
+.hearts{display:flex;flex-wrap:wrap;gap:2px;margin-bottom:7px;min-height:14px;}
+.heart{font-size:11px;line-height:1;filter:drop-shadow(0 0 2px #e03030);}
+.heart.empty{filter:none;opacity:.22;}
+.xpwrap{margin-bottom:5px;}
+.xptop{font-size:7px;color:var(--xpc);display:flex;justify-content:space-between;margin-bottom:2px;}
+.xpbar{height:8px;background:#111;border:1px solid var(--border);border-radius:2px;overflow:hidden;}
+.xpfill{height:100%;background:linear-gradient(90deg,var(--xpc),#20f0c0);transition:width .3s;box-shadow:0 0 6px var(--xpc);}
+/* Level-up button */
+.lvup-btn{display:none;width:100%;margin-top:5px;font-family:'Press Start 2P',monospace;
+  font-size:7px;padding:6px 4px;background:#1a3a1a;color:#60f060;
+  border:2px solid #40b040;border-bottom-color:#204020;border-right-color:#204020;
+  cursor:pointer;text-align:center;animation:lvglow .8s infinite alternate;}
+.lvup-btn:hover{background:#204020;color:#80ff80;}
+@keyframes lvglow{0%{box-shadow:0 0 4px #40b040}100%{box-shadow:0 0 12px #60f060}}
+.statsbox{background:#1a1210;border:1px solid var(--border);padding:5px;font-size:7px;line-height:2.1;}
+.sr{display:flex;justify-content:space-between;color:var(--dim);}
+.sv{color:var(--gold);}
+.pubox{margin-top:5px;background:#1a2a1a;border:1px solid #304030;
+  padding:4px;font-size:7px;color:#60e060;display:none;text-align:center;}
+
+/* ── BOARD ── */
+.barea{display:flex;flex-direction:column;align-items:center;gap:5px;}
+.bframe{background:#111;border:4px solid #444;border-radius:3px;padding:4px;
+  box-shadow:inset 0 0 30px rgba(0,0,0,.8),4px 4px 0 #080808;}
+#board{display:grid;gap:1px;background:#2f2f2f;}
+
+/* ── TILE ── */
+.tile{
+  width:42px;height:42px;
+  background:linear-gradient(180deg,#666666 0%,#636363 55%,#5f5f5f 100%);
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  flex-direction:column;gap:3px;
+  position:relative;user-select:none;overflow:hidden;
+  border:none;
+  box-shadow:
+    inset 1px 1px 0 rgba(255,255,255,.16),
+    inset -1px -1px 0 rgba(0,0,0,.24);
+  transition:background .1s;
+}
+.tile::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(circle at 50% 38%,rgba(255,255,255,.04) 0%,transparent 62%);
+  pointer-events:none;
+}
+.tile:hover:not(.boss-tile):not(.start-tile){filter:brightness(1.18);}
+.tile.revealed{
+  background:#4a4a4a;
+  box-shadow:
+    inset 1px 1px 0 rgba(0,0,0,.24),
+    inset -1px -1px 0 rgba(255,255,255,.04);
+}
+.tile.revealed::before{display:none;}
+
+/* content inside tiles */
+.t-sprite{font-size:18px;line-height:1;}
+.t-power{font-family:'Press Start 2P',monospace;font-size:8px;color:#f0a820;line-height:1;margin-top:2px;}
+.t-num{font-family:'Press Start 2P',monospace;font-size:10px;font-weight:bold;line-height:1;color:#ffffff;text-shadow:0 1px 0 rgba(0,0,0,.55);margin-top:3px;}
+.n1,.n2,.n3,.n4,.n5,.n6,.n7,.n8,.nbig{color:#ffffff;}
+.nbig{font-size:8px;}
+/* Player marks (1–11, mine, spider) — not classic flags */
+.tile.marked{background:#3a3530;}
+.tile.mark-mine{background:#4a2028 !important;}
+.tile.mark-spider{background:#2a3020 !important;}
+.t-mark{font-family:'Press Start 2P',monospace;font-size:9px;font-weight:bold;line-height:1;color:#e8c8ff;}
+.t-mark.mm{color:#ff6060;}
+.tile.revealed.chordable{outline:none;cursor:pointer;}
+
+/* Eye “mystery” is logic-only: tiles look like normal stone so the 12-tile ring
+   cannot reveal where the Eye is. */
+
+/* Mark picker (right-click) */
+#markMenu{
+  display:none;position:fixed;z-index:200;background:var(--panel);
+  border:2px solid var(--border2);border-radius:4px;padding:6px;
+  box-shadow:4px 4px 0 #0a0806;max-width:280px;
+}
+#markMenu.active{display:block;}
+.mm-title{font-size:7px;color:var(--gold);margin-bottom:5px;text-align:center;}
+.mm-grid{display:flex;flex-wrap:wrap;gap:3px;justify-content:center;}
+.mm-btn{font-family:'Press Start 2P',monospace;font-size:7px;padding:4px 5px;
+  min-width:28px;background:var(--panel2);color:var(--text);border:1px solid var(--border);
+  cursor:pointer;border-radius:2px;}
+.mm-btn:hover{background:var(--border);color:#fff;}
+.mm-btn.mine{color:#ff7070;}
+.mm-clear{grid-column:1/-1;width:100%;margin-top:4px;font-size:6px;}
+/* boss tile – always visible */
+.tile.boss-tile{
+  background:#3a1010 !important;
+  box-shadow:inset 0 0 8px rgba(255,0,0,.35) !important;
+  cursor:pointer;
+}
+.t-boss-sprite{font-size:20px;animation:bpulse 1.2s infinite;display:inline-block;}
+@keyframes bpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.2)}}
+/* start pickaxe tile */
+.tile.start-tile{background:#686868;cursor:pointer;}
+.t-click{font-family:'VT323',monospace;font-size:11px;color:#f0e0a0;line-height:1.1;}
+.t-pickaxe{font-size:20px;line-height:1;}
+/* brick revealed states - shown on the grey revealed tile face */
+.t-brick{font-size:16px;line-height:1;}
+.t-crack{font-family:'VT323',monospace;font-size:9px;color:#e07030;line-height:1;}
+/* heart on tile (stays until collected) */
+.t-heart-item{font-size:20px;line-height:1;cursor:pointer;}
+#board.debug-on{box-shadow:inset 0 0 0 2px rgba(100,200,120,.25);}
+.tile.tile-dbg.revealed{box-shadow:inset 0 0 0 1px rgba(120,220,160,.2);}
+.tile.tile-snap.revealed{background:#5a5862;}
+
+/* flash animations */
+.tile.fkill{animation:akill .4s;}
+.tile.fdmg{animation:admg .3s;}
+.tile.fheal{animation:aheal .35s;}
+.tile.fbrick{animation:abrick .3s;}
+@keyframes akill{0%{background:#c0a000;filter:brightness(2)}100%{background:#686868}}
+@keyframes admg{0%{background:#c03030}100%{background:#686868}}
+@keyframes aheal{0%{background:#20b020}100%{background:#686868}}
+@keyframes abrick{0%{background:#e06020;filter:brightness(1.6)}100%{background:#686868}}
+
+/* mode strip & warnings */
+.mstrip{font-size:8px;padding:4px 10px;background:var(--panel2);
+  border:1px solid var(--border);text-align:center;width:100%;}
+.mflag{color:var(--blue)}.mdig{color:var(--gold)}
+.bwarn{font-family:'VT323',monospace;font-size:15px;color:var(--red);
+  text-align:center;animation:blink 1s infinite;display:none;}
+.dwarn{font-family:'VT323',monospace;font-size:14px;color:#ff8000;
+  text-align:center;display:none;animation:blink 1s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+.pline{font-family:'VT323',monospace;font-size:14px;color:var(--dim);text-align:center;}
+.controls{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;}
+.btn{font-family:'Press Start 2P',monospace;font-size:7px;padding:6px 10px;
+  background:var(--panel2);color:var(--gold);border:2px solid var(--border2);
+  border-bottom-color:#222;border-right-color:#222;cursor:pointer;transition:all .1s;}
+.btn:hover{background:var(--border);color:#fff;}
+.btn:active{border-top-color:#222;border-left-color:#222;
+  border-bottom-color:var(--border2);border-right-color:var(--border2);transform:translate(1px,1px);}
+.btn.s{color:var(--green);border-color:#308030;}
+
+/* ── LOG PANEL ── */
+.lpanel{width:158px;background:var(--panel);border:3px solid var(--border);
+  border-radius:4px;padding:8px;box-shadow:inset 0 0 20px rgba(0,0,0,.5),3px 3px 0 #0a0806;
+  flex-shrink:0;display:flex;flex-direction:column;gap:6px;}
+.ltitle{font-size:8px;color:var(--gold);border-bottom:1px solid var(--border);
+  padding-bottom:3px;text-align:center;}
+#blog{height:235px;overflow-y:auto;font-family:'VT323',monospace;font-size:13px;line-height:1.5;
+  scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+.le{margin-bottom:1px;}
+.le.dmg{color:var(--red)}.le.kill{color:var(--gold)}.le.heal{color:var(--green)}
+.le.lvl{color:#f0f060}.le.info{color:var(--dim)}.le.flag{color:var(--blue)}
+.le.win{color:#f0f060}.le.lose{color:var(--red)}.le.spc{color:#c060ff}
+.le.brick{color:#e09040}
+.legend{background:#1a1210;border:1px solid var(--border);padding:5px;}
+.legtitle{font-size:7px;color:var(--dim);margin-bottom:4px;}
+.leggrid{display:flex;flex-wrap:wrap;gap:3px;}
+.li{font-size:13px;cursor:help;position:relative;}
+.li:hover::after{content:attr(data-tip);position:absolute;bottom:110%;left:0;
+  background:#1a1210;border:1px solid var(--border);padding:3px 6px;
+  font-family:'VT323',monospace;font-size:12px;white-space:nowrap;z-index:99;
+  color:var(--text);pointer-events:none;min-width:130px;}
+
+/* ── OVERLAYS ── */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:100;
+  align-items:center;justify-content:center;flex-direction:column;gap:16px;}
+.overlay.active{display:flex;}
+/* Defeat: don’t cover the board — light scrim + compact bottom bar so spawn snapshot stays visible */
+.overlay.lose-mode{background:rgba(0,0,0,.28);align-items:flex-end;justify-content:center;
+  padding:10px 10px 14px;flex-direction:row;flex-wrap:wrap;}
+.overlay.lose-mode .ovbox{max-width:min(920px,100%);width:100%;margin:0;padding:14px 18px 16px;
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:12px 20px;
+  box-shadow:0 -4px 24px rgba(0,0,0,.5);}
+.overlay.lose-mode .ovtitle{font-size:12px;margin:0;flex:0 0 auto;width:100%;max-width:100%;}
+.overlay.lose-mode .ovmsg{font-size:14px;margin:0;flex:1 1 280px;text-align:left;line-height:1.45;
+  max-height:min(28vh,200px);overflow-y:auto;white-space:pre-line;}
+.overlay.lose-mode .btn.s{flex:0 0 auto;margin:0;}
+.ovbox{background:var(--panel);border:3px solid var(--border2);padding:28px;
+  text-align:center;max-width:380px;box-shadow:0 0 40px rgba(240,192,64,.3);}
+.ovtitle{font-size:15px;margin-bottom:14px;}
+.ovtitle.win{color:var(--gold);text-shadow:0 0 20px var(--gold);}
+.ovtitle.lose{color:var(--red);text-shadow:0 0 20px var(--red);}
+.ovmsg{font-family:'VT323',monospace;font-size:17px;color:var(--text);margin-bottom:18px;line-height:1.7;white-space:pre-line;}
+.helpbox{background:var(--panel);border:3px solid var(--border2);padding:14px;
+  max-width:520px;max-height:80vh;overflow-y:auto;}
+.helpbox h2{font-size:11px;color:var(--gold);margin-bottom:10px;text-align:center;}
+.helpbox h3{font-size:8px;color:var(--xpc);margin:8px 0 4px;}
+.helpbox p{font-family:'VT323',monospace;font-size:14px;color:var(--text);line-height:1.6;}
+
+@media(max-width:700px){
+  .tile{width:34px;height:34px;}
+  .t-sprite,.t-boss-sprite,.t-pickaxe,.t-brick,.t-heart-item{font-size:15px;}
+  .t-power,.t-crack{font-size:6px;}.t-num{font-size:8px;}
+  .ppanel,.lpanel{width:130px;}
+  h1{font-size:10px;}
+}
+</style>
+</head>
+<body>
+<h1>⚔ DARK LORD'S DUNGEON ⚔</h1>
+<div class="game-wrap">
+
+<!-- PLAYER PANEL -->
+<div class="ppanel">
+  <div class="portrait">
+    <canvas id="heroC" width="96" height="96" style="image-rendering:pixelated;width:96px;height:96px;"></canvas>
+  </div>
+  <div class="lvbadge" id="lvbadge">Lv.1</div>
+  <div class="pname">Violet</div>
+  <div class="hlabel">HP: <span id="hpcur">5</span> / <span id="hpmax">5</span></div>
+  <div class="hearts" id="hearts"></div>
+  <div class="xpwrap">
+    <div class="xptop"><span>EXP</span><span id="xplbl">0/4</span></div>
+    <div class="xpbar"><div class="xpfill" id="xpfill" style="width:0%"></div></div>
+  </div>
+  <button class="lvup-btn" id="lvup-btn" onclick="doLevelUp()">✨ LEVEL UP!</button>
+  <div class="statsbox">
+    <div class="sr"><span>Killed</span><span class="sv" id="skl">0</span></div>
+    <div class="sr"><span>Marks</span><span class="sv" id="sfl">0</span></div>
+    <div class="sr"><span>Dug</span><span class="sv" id="srv">0</span></div>
+  </div>
+  <div class="pubox" id="pubox">💥 MINE SLAYER<br>Mines = +3 EXP!</div>
+</div>
+
+<!-- BOARD AREA -->
+<div class="barea">
+  <div class="mstrip mdig" id="mstrip">⛏ DIG — right-click to mark threat</div>
+  <div class="bwarn" id="bwarn">⚠ DARK LORD AWAKENS — CLICK THE CORNER ⚠</div>
+  <div class="dwarn" id="dwarn">⚠ 0 HP — LEVEL UP OR COLLECT A ❤️ ⚠</div>
+  <div class="bframe"><div id="board"></div></div>
+  <div class="pline" id="pline">Reach Lv.19 (13HP) → Defeat the Dark Lord!</div>
+  <div class="controls">
+    <button class="btn" onclick="toggleFlag()">🎯 Mark mode (F)</button>
+    <button class="btn s" onclick="startGame()">↺ New (R)</button>
+    <button class="btn" onclick="showHelp()">? Help</button>
+  </div>
+</div>
+
+<!-- LOG PANEL -->
+<div class="lpanel">
+  <div class="ltitle">⚔ BATTLE LOG</div>
+  <div id="blog"></div>
+  <div class="legend">
+    <div class="legtitle">BESTIARY</div>
+    <div class="leggrid" id="bestiary"></div>
+  </div>
+</div>
+
+</div><!-- game-wrap -->
+
+<!-- WIN/LOSE OVERLAY -->
+<div class="overlay" id="overlay">
+  <div class="ovbox">
+    <div class="ovtitle" id="ovtitle"></div>
+    <div class="ovmsg" id="ovmsg"></div>
+    <button class="btn s" onclick="startGame();closeOv()">▶ Play Again</button>
+  </div>
+</div>
+
+<!-- HELP OVERLAY -->
+<div class="overlay" id="helpov">
+  <div class="helpbox">
+    <h2>📖 HOW TO PLAY</h2>
+    <h3>🎯 Goal</h3>
+    <p>Reach Level 19 (13 HP) and click the Dark Lord at row 6, col 7 (center-ish) to win!</p>
+    <h3>⛏ Starting</h3>
+    <p>Click the ⛏ Pickaxe tile to begin — reveals 12 tiles in a cross/diamond. A hidden 2nd pickaxe exists with the same effect.</p>
+    <h3>⚔ Combat & clues</h3>
+    <p>Click to reveal tiles. If monster power &gt; your HP → instant death. Revealed empty tiles show <strong>remaining</strong> adjacent threat (sum of enemy P); it <strong>updates</strong> when neighbors are cleared. You briefly see who you’re fighting before damage resolves.</p>
+    <h3>🎯 Threat marks (notes)</h3>
+    <p>Right-click to set P1–P11 or Mine (P100). Marks are <strong>your notes only</strong> — clue numbers always show the full adjacent threat sum. When your marks around a clue <strong>account for</strong> that sum (same total power), click the clue (or middle-click) to <strong>chord</strong>. Press F for mark mode. Digging / chord / pickaxe clears a mark on reveal.</p>
+    <h3>⭐ EXP & Manual Level Up</h3>
+    <p>Kill Px = x EXP. When you have enough EXP, a ✨ LEVEL UP button appears. Click it to spend EXP and go up one level (+1 HP cap + full heal). EXP stacks — you won't auto-level.</p>
+    <h3>❤️ 0 HP Survival & Hearts</h3>
+    <p>At 0 HP you can still dig and guess — <strong>revealing a monster you can't survive</strong> (power &gt; your HP) ends the run. Mines still explode. Collect a ❤️ on a tile or level up to recover.</p>
+    <h3>🧱 Bricks (x6)</h3>
+    <p>Click 1: Revealed (no damage). Click 2,3,4: 1 damage each. After 4 clicks: destroyed, gives +1 EXP.</p>
+    <h3>👹 Specials</h3>
+    <p>
+      🧛 P9 Vampire: drops ❤️ on same tile after kill (click to collect later).<br>
+      🐉 P10 Dragon: always at <strong>a board corner</strong> — Mine Slayer (mines → +3 EXP).<br>
+      📦 P11 Mimic: hides in one chest — <strong>neighbor clues count it as P11</strong> (safe chests count 0).<br>
+      👁️ P5 Eye (P5): 12 tiles around it are <strong>“mystery”</strong> (look like normal stone — doesn’t reveal the Eye). They block auto-clear until the Eye is killed.<br>
+      🃏 P0 Spider Card: marks every P1 spider tile with 🕷️ + P1 (not a generic flag).<br>
+      🐵 P0 Monkey Card: +9 EXP free.<br>
+      💣 Mine P100: instant death (or +3 EXP with Mine Slayer).
+    </p>
+    <h3>🗺️ After defeat &amp; debug</h3>
+    <p>When you <strong>lose</strong>, the board shows the <strong>full spawn layout</strong>; the defeat panel sits at the <strong>bottom</strong> with a light dim so you can still see the map. Press <strong>`</strong> (backtick) during a run to toggle <strong>debug peek</strong> (testing).</p>
+  </div>
+  <button class="btn" onclick="document.getElementById('helpov').classList.remove('active')">✕ Close</button>
+</div>
+
+<!-- Right-click mark menu (P1–P11 + mine + clear) -->
+<div id="markMenu" aria-hidden="true">
+  <div class="mm-title">Mark threat (power)</div>
+  <div class="mm-grid" id="markGrid"></div>
+  <button type="button" class="mm-btn mm-clear" id="markClearBtn">✕ Clear mark</button>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// DATA TABLES
+// ══════════════════════════════════════════════════════
+const COLS=13, ROWS=10, TOTAL=COLS*ROWS;
+
+// Exact HP per level (index = level, max level = 19)
+const HP_TABLE=[0, 5,5,6,6,6,7,7,8,8,9,9,9,10,10,11,11,12,12,13];
+//                  1  2  3  4  5  6  7  8  9 10 11 12  13  14  15  16  17  18  19
+
+// EXP needed to go from level L to L+1
+const XP_TABLE=[0, 4,5,7,9,9,10,12,12,12,15,18,21,21,25,25,25,25,25,0];
+//                  1→2 2→3 3→4 4→5 5→6 6→7 7→8 8→9 9→10 10→11 11→12 12→13 13→14 14→15 15→16 16→17 17→18 18→19 (19=max)
+
+// Monster / item definitions
+const D={
+  P1:    {e:'🕷️',n:'Spider',     p:1,  x:1,  t:'monster'},
+  P2:    {e:'🐛',n:'Slime',      p:2,  x:2,  t:'monster'},
+  P3:    {e:'🤖',n:'Golem',      p:3,  x:3,  t:'monster'},
+  P4:    {e:'💀',n:'Skeleton',   p:4,  x:4,  t:'monster'},
+  P5M:   {e:'🍄',n:'Mushroom',   p:5,  x:5,  t:'monster'},
+  P6:    {e:'🐒',n:'Monkey',     p:6,  x:6,  t:'monkey'},
+  P7:    {e:'😈',n:'Demon',      p:7,  x:7,  t:'monster'},
+  P8:    {e:'🧙',n:'Witch',      p:8,  x:8,  t:'monster'},
+  P9:    {e:'🧛',n:'Vampire',    p:9,  x:9,  t:'vampire'},
+  P10:   {e:'🐉',n:'Dragon',     p:10, x:10, t:'dragon'},
+  P5E:   {e:'👁️', n:'Eye',       p:5,  x:5,  t:'eye'},
+  MINE:  {e:'💣',n:'Mine',       p:100,x:3,  t:'mine'},
+  CHEST: {e:'📦',n:'Chest',      p:0,  x:5,  t:'chest'},
+  HEART: {e:'❤️',n:'Heart',      p:0,  x:0,  t:'heart'},
+  PICKAXE:{e:'⛏️',n:'Pickaxe',   p:0,  x:0,  t:'pickaxe'},
+  SPIDER0:{e:'🃏',n:'Spider Card',p:0,  x:0,  t:'spidercard'},
+  MONKEY0:{e:'🐵',n:'Monkey Card',p:0, x:9,  t:'monkeycard'},
+  EXPITEM:{e:'✨',n:'EXP Gem',   p:0,  x:3,  t:'item'},
+  BOSS:  {e:'👿',n:'Dark Lord',  p:13, x:50, t:'boss'},
+};
+
+// Exact spawn counts from monster log
+const SPAWNS=[
+  ['P1',13],['P2',12],['P3',10],['P4',8],['P5M',8],
+  ['P6',5],['P7',4],['P8',5],['P9',2],
+  // P10 Dragon x1 — placed at a random corner in createBoard()
+  ['P5E',1],
+  ['MINE',9],
+  ['CHEST',5],['HEART',8],
+  ['PICKAXE',1],  // hidden pickaxe (start pickaxe is separate)
+  ['SPIDER0',1],['MONKEY0',1],
+  // BRICK x6 placed separately; BOSS at fixed position; P11 mimic replaces one chest
+];
+
+// Pickaxe / Eye reveal cross-diamond pattern (12 tiles)
+const CROSS12=[
+  [-2,0],[-1,-1],[-1,0],[-1,1],
+  [0,-2],[0,-1],[0,1],[0,2],
+  [1,-1],[1,0],[1,1],[2,0]
+];
+const NAKI_PORTRAIT_SRC='file:///C:/Users/Admin/.cursor/projects/d-Python-minesweeper-dark-lord-game/assets/c__Users_Admin_AppData_Roaming_Cursor_User_workspaceStorage_148756be5c5c25760373095f5e2dc215_images_image-1fdece47-032b-4765-b599-ab98a74a938c.png';
+
+// ══════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════
+let G={};
+let _nakiPortraitImg=null;
+let _nakiPortraitReady=false;
+
+function initG(){
+  G={
+    lv:1, hp:HP_TABLE[1], maxHp:HP_TABLE[1], xp:0,
+    flagMode:false, dead:false, won:false,
+    mineSlayer:false,
+    killed:0, marks:0, dug:0,
+    board:[],
+    mysterySet:new Set(),
+    eyeIdx:-1,
+    bossIdx:-1,
+    mimicIdx:-1,
+    startPickaxeIdx:-1,
+    gameStarted:false,
+    markMenuIdx:-1,
+    boardSnapshot:null,
+    lossReview:false,
+    debugPeek:false,
+  };
+}
+
+// Cell structure
+function mkCell(){
+  return{
+    key:null,        // string key into D, or null
+    revealed:false,
+    playerMark:null, // null | 'MINE' | 'SPIDER' | 1..11 assumed P for CSP deduction
+    mystery:false,   // cursed by Eye
+    neighborPower:0,
+    // Heart item that dropped here (stays until clicked)
+    hasHeart:false,
+    // Brick: -1 = no brick; 0=untouched(hidden), 1=revealed(no dmg), 2=crack1, 3=crack2, 4=destroyed(expitem)
+    brick:-1,
+    isStartPickaxe:false,
+  };
+}
+
+function rc(i){return{r:Math.floor(i/COLS),c:i%COLS};}
+function idx(r,c){return r*COLS+c;}
+function valid(r,c){return r>=0&&r<ROWS&&c>=0&&c<COLS;}
+function isEyeAlive(){return G.eyeIdx>=0&&G.board[G.eyeIdx]&&G.board[G.eyeIdx].key==='P5E';}
+
+function shuffle(a){
+  for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+  return a;
+}
+
+// ── CREATE BOARD ──
+function createBoard(){
+  G.board=Array.from({length:TOTAL},mkCell);
+
+  // Boss fixed position: row 5 (0-indexed), col 6 → tile index (5*13)+6 = 71
+  // "Row 6, Col 7" in 1-indexed = row5,col6 in 0-indexed
+  const bossI=idx(5,6);
+  G.board[bossI].key='BOSS';
+  G.bossIdx=bossI;
+
+  // Start pickaxe in a central-ish random location (avoid boss + edges)
+  let centerPool=[];
+  for(let r=2;r<ROWS-2;r++) for(let c=2;c<COLS-2;c++){
+    const i=idx(r,c);
+    if(i!==bossI) centerPool.push(i);
+  }
+  shuffle(centerPool);
+  const startPick=centerPool[0];
+  G.board[startPick].key='PICKAXE';
+  G.board[startPick].isStartPickaxe=true;
+  G.startPickaxeIdx=startPick;
+
+  // P10 Dragon (Mine Slayer) — always one of the four map corners
+  const cornerIdxs=[idx(0,0),idx(0,COLS-1),idx(ROWS-1,0),idx(ROWS-1,COLS-1)]
+    .filter(i=>i!==bossI&&i!==startPick);
+  const dragonI=cornerIdxs[Math.floor(Math.random()*cornerIdxs.length)];
+  G.board[dragonI].key='P10';
+
+  // Remaining placement pool (dragon corner excluded)
+  let pool=shuffle([...Array(TOTAL).keys()].filter(i=>i!==bossI&&i!==startPick&&i!==dragonI));
+  let cur=0;
+
+  for(const [k,cnt] of SPAWNS){
+    for(let c=0;c<cnt;c++){
+      if(cur>=pool.length) break;
+      G.board[pool[cur++]].key=k;
+    }
+  }
+
+  // Place 6 bricks on random unrevealed empty cells
+  let brickPool=pool.slice(cur).filter(i=>!G.board[i].key);
+  shuffle(brickPool);
+  for(let b=0;b<6&&b<brickPool.length;b++){
+    G.board[brickPool[b]].brick=0; // 0 = untouched hidden brick
+  }
+
+  // Mimic: replace one chest with mimic (visually stays as chest)
+  let chests=G.board.map((c,i)=>c.key==='CHEST'?i:-1).filter(i=>i>=0);
+  if(chests.length) G.mimicIdx=chests[Math.floor(Math.random()*chests.length)];
+
+  // Eye index
+  G.eyeIdx=G.board.findIndex(c=>c.key==='P5E');
+
+  // Apply Eye mystery (12 tiles around Eye are marked mystery from the start)
+  applyEyeMystery();
+
+  recalcNeighbors();
+
+  G.boardSnapshot=G.board.map(c=>({
+    key:c.key,
+    brick:c.brick,
+    mystery:c.mystery,
+    hasHeart:c.hasHeart,
+    isStartPickaxe:c.isStartPickaxe,
+    neighborPower:c.neighborPower,
+  }));
+}
+
+function applyEyeMystery(){
+  if(G.eyeIdx<0) return;
+  const {r,c}=rc(G.eyeIdx);
+  for(const [dr,dc] of CROSS12){
+    const nr=r+dr,nc=c+dc;
+    if(!valid(nr,nc)) continue;
+    const ni=idx(nr,nc);
+    const cell=G.board[ni];
+    if(!cell.revealed&&ni!==G.bossIdx){
+      cell.mystery=true;
+      G.mysterySet.add(ni);
+    }
+  }
+}
+
+/** Threat counted toward adjacent clue numbers (unrevealed mimic chest = P11). */
+function neighborThreatPower(nb,ni){
+  if(!nb||!nb.key) return 0;
+  if(nb.key==='CHEST') return ni===G.mimicIdx ? 11 : 0;
+  if(nb.key==='MIMIC') return 11;
+  const d=D[nb.key];
+  return d&&d.p>0 ? d.p : 0;
+}
+
+function recalcNeighbors(){
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+    const i=idx(r,c);
+    let tot=0;
+    for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++){
+      if(!dr&&!dc) continue;
+      const nr=r+dr,nc=c+dc;
+      if(!valid(nr,nc)) continue;
+      const ni=idx(nr,nc);
+      tot+=neighborThreatPower(G.board[ni],ni);
+    }
+    G.board[i].neighborPower=tot;
+  }
+}
+
+/** Assumed power for a player mark (used for chord check only — not shown on clues). */
+function markAssumedPower(m){
+  if(m==null||m===undefined||m==='') return 0;
+  if(m==='MINE') return 100;
+  if(m==='SPIDER') return 1;
+  if(typeof m==='number'&&m>=1&&m<=11) return m;
+  return 0;
+}
+
+function sumNeighborMarks(i){
+  const {r,c}=rc(i);
+  let s=0;
+  for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++){
+    if(!dr&&!dc) continue;
+    const nr=r+dr,nc=c+dc;
+    if(!valid(nr,nc)) continue;
+    s+=markAssumedPower(G.board[idx(nr,nc)].playerMark);
+  }
+  return s;
+}
+
+/** Neighbor mark total vs clue — for chord only (tile numbers stay raw). */
+function effectiveRemain(i){
+  const raw=G.board[i].neighborPower;
+  return Math.max(0,raw-sumNeighborMarks(i));
+}
+
+function refreshGrid(){
+  if(!G.lossReview) recalcNeighbors();
+  for(let j=0;j<TOTAL;j++) paintTile(j);
+  const bd=document.getElementById('board');
+  if(bd) bd.classList.toggle('debug-on',!!G.debugPeek&&!G.lossReview);
+}
+
+function countMarksOnBoard(){
+  let n=0;
+  G.board.forEach(c=>{if(c.playerMark!=null)n++;});
+  return n;
+}
+
+// ══════════════════════════════════════════════════════
+// RENDER
+// ══════════════════════════════════════════════════════
+function renderBoard(){
+  const bd=document.getElementById('board');
+  bd.style.gridTemplateColumns=`repeat(${COLS},auto)`;
+  // Build fresh DOM
+  bd.innerHTML='';
+  for(let i=0;i<TOTAL;i++){
+    const tile=document.createElement('div');
+    tile.className='tile';
+    tile.dataset.i=i;
+    tile.addEventListener('click',()=>onTileClick(i));
+    tile.addEventListener('auxclick',e=>{
+      if(e.button!==1) return;
+      e.preventDefault();
+      tryChordAt(i);
+    });
+    tile.addEventListener('contextmenu',e=>{
+      e.preventDefault();
+      openMarkMenu(i,e.clientX,e.clientY);
+    });
+    bd.appendChild(tile);
+  }
+  for(let i=0;i<TOTAL;i++) paintTile(i);
+  bd.classList.toggle('debug-on',!!G.debugPeek&&!G.lossReview);
+}
+
+function paintTile(i){
+  const tiles=document.getElementById('board').children;
+  const tile=tiles[i];
+  if(!tile) return;
+  const snap=G.lossReview&&G.boardSnapshot;
+  const dbg=G.debugPeek&&!snap;
+  const showAll=snap||dbg;
+  const cell=snap?G.boardSnapshot[i]:G.board[i];
+  const brickVal=dbg?G.board[i].brick:cell.brick;
+  const dispRevealed=snap||dbg||G.board[i].revealed;
+  const numPow=snap?cell.neighborPower:G.board[i].neighborPower;
+  const mysteryMasked=!showAll&&dispRevealed&&G.board[i].mystery&&isEyeAlive();
+
+  tile.className='tile'+(snap?' tile-snap':'')+(dbg?' tile-dbg':'');
+  tile.innerHTML='';
+
+  if(i===G.bossIdx){
+    tile.classList.add('boss-tile');
+    addEl(tile,'span','t-boss-sprite','👿');
+    addEl(tile,'span','t-power','13');
+    return;
+  }
+
+  if(i===G.startPickaxeIdx&&!G.gameStarted&&!showAll){
+    tile.classList.add('start-tile');
+    addEl(tile,'span','t-click','Click!⛏');
+    addEl(tile,'span','t-pickaxe','⛏️');
+    return;
+  }
+
+  if(showAll&&brickVal===0){
+    tile.classList.add('revealed');
+    addEl(tile,'span','t-brick','🧱');
+    addEl(tile,'span','t-crack',dbg?'[brick]':'[hidden]');
+    return;
+  }
+  if(brickVal===0){
+  } else if(brickVal===1){
+    tile.classList.add('revealed');
+    addEl(tile,'span','t-brick','🧱');
+    addEl(tile,'span','t-crack','[hit me]');
+    return;
+  } else if(brickVal===2){
+    tile.classList.add('revealed');
+    addEl(tile,'span','t-brick','🪨');
+    addEl(tile,'span','t-crack','cracked!');
+    return;
+  } else if(brickVal===3){
+    tile.classList.add('revealed');
+    addEl(tile,'span','t-brick','💢');
+    addEl(tile,'span','t-crack','breaking!');
+    return;
+  } else if(brickVal===4){
+    tile.classList.add('revealed');
+    addEl(tile,'span','t-sprite','✨');
+    addEl(tile,'span','t-power','+1');
+    return;
+  }
+
+  if(dispRevealed){
+    tile.classList.add('revealed');
+
+    if(mysteryMasked){
+      addEl(tile,'span','t-num','?');
+      return;
+    }
+
+    const hHeart=snap?cell.hasHeart:G.board[i].hasHeart;
+    if(hHeart){
+      addEl(tile,'span','t-heart-item','❤️');
+      return;
+    }
+
+    if(cell.key){
+      const d=D[cell.key];
+      if(d){
+        addEl(tile,'span','t-sprite',d.e);
+        if(d.p>0) addEl(tile,'span','t-power',String(d.p));
+      }
+      if(snap&&cell.key==='CHEST'&&i===G.mimicIdx){
+        addEl(tile,'span','t-crack','→mimic');
+      }
+    } else {
+      const raw=numPow;
+      if(raw>0){
+        const cls=raw>8?'nbig':'n'+Math.min(raw,8);
+        addEl(tile,'span','t-num '+cls,String(raw));
+        if(!showAll&&effectiveRemain(i)===0&&raw>0) tile.classList.add('chordable');
+      }
+    }
+    return;
+  }
+
+  if(!showAll&&G.board[i].playerMark!=null){
+    const pm=G.board[i].playerMark;
+    tile.classList.add('marked');
+    if(pm==='MINE'){
+      tile.classList.add('mark-mine');
+      addEl(tile,'span','t-mark mm','💣');
+    } else if(pm==='SPIDER'){
+      tile.classList.add('mark-spider');
+      addEl(tile,'span','t-sprite','🕷️');
+      addEl(tile,'span','t-mark','P1');
+    } else {
+      addEl(tile,'span','t-mark','P'+pm);
+    }
+    return;
+  }
+}
+
+function addEl(parent,tag,cls,txt){
+  const el=document.createElement(tag);
+  el.className=cls;
+  if(txt!==undefined) el.textContent=txt;
+  parent.appendChild(el);
+  return el;
+}
+
+// ── RENDER PLAYER PANEL ──
+function renderPlayer(){
+  document.getElementById('lvbadge').textContent=`Lv.${G.lv}`;
+  document.getElementById('skl').textContent=G.killed;
+  document.getElementById('sfl').textContent=countMarksOnBoard();
+  document.getElementById('srv').textContent=G.dug;
+  document.getElementById('hpcur').textContent=G.hp;
+  document.getElementById('hpmax').textContent=G.maxHp;
+
+  // Hearts display
+  const hEl=document.getElementById('hearts');
+  hEl.innerHTML='';
+  for(let i=0;i<G.maxHp;i++){
+    const h=document.createElement('span');
+    h.className='heart'+(i<G.hp?'':' empty');
+    h.textContent='❤️';
+    hEl.appendChild(h);
+  }
+
+  // XP bar
+  const maxLv=HP_TABLE.length-1; // 19
+  const need=G.lv<maxLv?XP_TABLE[G.lv]:0;
+  const pct=G.lv>=maxLv?100:(need>0?Math.min(100,G.xp/need*100):100);
+  document.getElementById('xpfill').style.width=pct+'%';
+  document.getElementById('xplbl').textContent=G.lv>=maxLv?'MAX':`${G.xp}/${need}`;
+
+  // Level-up button
+  const lvBtn=document.getElementById('lvup-btn');
+  const canLvUp=G.lv<maxLv && G.xp>=XP_TABLE[G.lv];
+  lvBtn.style.display=canLvUp?'block':'none';
+
+  // Mode strip
+  const ms=document.getElementById('mstrip');
+  ms.className='mstrip '+(G.flagMode?'mflag':'mdig');
+  ms.textContent=G.flagMode?'🎯 MARK MODE — click tile':'⛏ DIG — right-click = threat marks';
+
+  document.getElementById('bwarn').style.display=G.lv>=19?'block':'none';
+  document.getElementById('dwarn').style.display=(G.hp<=0&&!G.dead&&!G.won)?'block':'none';
+  document.getElementById('pubox').style.display=G.mineSlayer?'block':'none';
+  document.getElementById('pline').textContent=
+    G.lv>=19?'👿 Find the Dark Lord — center of the board!':
+    `Reach Lv.19 (13HP) → Defeat the Dark Lord!`;
+
+  drawHero();
+}
+
+function renderBestiary(){
+  const el=document.getElementById('bestiary');el.innerHTML='';
+  [
+    ['🕷️','P1 Spider x13 — 1exp'],
+    ['🐛','P2 Slime x12 — 2exp'],
+    ['🤖','P3 Golem x10 — 3exp'],
+    ['💀','P4 Skeleton x8 — 4exp'],
+    ['🍄','P5 Mushroom x8 — 5exp'],
+    ['🐒','P6 Monkey x5 — reveals area'],
+    ['😈','P7 Demon x4 — 7exp'],
+    ['🧙','P8 Witch x5 — 8exp'],
+    ['🧛','P9 Vampire x2 — drops ❤️ on tile'],
+    ['🐉','P10 Dragon x1 — always a corner; Mine Slayer!'],
+    ['👁️','P5 Eye x1 — hidden curse, 12 tiles (plain look)'],
+    ['💣','P100 Mine x9 — instant death!'],
+    ['📦','Chest x5 — +5exp (1=Mimic P11!)'],
+    ['❤️','Heart x8 — full heal (click to use)'],
+    ['⛏️','Pickaxe x1+1 — reveals 12 tiles'],
+    ['🃏','Spider Card P0 — marks all P1 spiders 🕷️'],
+    ['🐵','Monkey Card P0 — +9 EXP'],
+    ['🧱','Brick x6 — 4 clicks, 3 dmg, +1exp'],
+    ['👿','Dark Lord P13 — WIN! (need Lv.19)'],
+  ].forEach(([e,tip])=>{
+    const sp=document.createElement('span');
+    sp.className='li';sp.textContent=e;sp.dataset.tip=tip;
+    el.appendChild(sp);
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// GAME LOGIC
+// ══════════════════════════════════════════════════════
+
+/** Chord when marks account for raw clue sum (effectiveRemain===0) — reveal other adjacent hidden tiles. */
+function chordReveal(i){
+  const {r,c}=rc(i);
+  let opened=0;
+  for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++){
+    if(!dr&&!dc) continue;
+    const nr=r+dr,nc=c+dc;
+    if(!valid(nr,nc)) continue;
+    const ni=idx(nr,nc);
+    if(ni===G.bossIdx) continue;
+    const nb=G.board[ni];
+    if(nb.revealed||nb.hasHeart) continue;
+    if(nb.brick>=0) continue;
+    revealCell(ni);
+    opened++;
+  }
+  if(opened) log(`⚡ Chord — opened ${opened} tile(s)`,'spc');
+  refreshGrid();
+  renderPlayer();
+}
+
+function tryChordAt(i){
+  if(G.dead||G.won||G.lossReview||!G.gameStarted) return;
+  const cell=G.board[i];
+  if(!cell.revealed||cell.key||cell.hasHeart||cell.brick>=0||i===G.bossIdx) return;
+  recalcNeighbors();
+  const raw=G.board[i].neighborPower;
+  if(raw>0 && effectiveRemain(i)===0) chordReveal(i);
+}
+
+function openMarkMenu(i,clientX,clientY){
+  if(G.dead||G.won||G.lossReview) return;
+  if(!G.gameStarted){log('Start the game first!','info');return;}
+  if(i===G.bossIdx) return;
+  if(i===G.startPickaxeIdx&&G.board[G.startPickaxeIdx].isStartPickaxe) return;
+  const cell=G.board[i];
+  if(cell.revealed&&cell.brick!==0) return;
+  const menu=document.getElementById('markMenu');
+  G.markMenuIdx=i;
+  const pad=42; // ~1 tile distance
+  const uiZoom=parseFloat(getComputedStyle(document.body).zoom)||1;
+  // If coordinates are missing (e.g. mark mode click), anchor to tile center.
+  if(clientX==null||clientY==null){
+    const tile=document.querySelector(`#board .tile[data-i="${i}"]`);
+    if(tile){
+      const tr=tile.getBoundingClientRect();
+      clientX=Math.round(tr.left+tr.width/2);
+      clientY=Math.round(tr.top+tr.height/2);
+    }else{
+      clientX=Math.round(window.innerWidth/2);
+      clientY=Math.round(window.innerHeight/2);
+    }
+  }
+
+  // Temporarily show so we can measure true size (important with page zoom/scaling).
+  menu.classList.add('active');
+  menu.setAttribute('aria-hidden','false');
+  const rect=menu.getBoundingClientRect();
+  // Convert measured viewport size back into body-zoomed coordinate space.
+  const mw=(Math.ceil(rect.width)||280)/uiZoom;
+  const mh=(Math.ceil(rect.height)||220)/uiZoom;
+  const vw=window.innerWidth/uiZoom;
+  const vh=window.innerHeight/uiZoom;
+  const cx=clientX/uiZoom;
+  const cy=clientY/uiZoom;
+
+  // Windows-like context placement: prefer right/bottom; flip to left/top near edges.
+  let x=cx+pad;
+  let y=cy+pad;
+  if(x+mw>vw-pad) x=cx-mw+pad;
+  if(y+mh>vh-pad) y=cy-mh+pad;
+
+  // Final clamp so menu is always fully visible.
+  x=Math.max(pad,x);
+  y=Math.max(pad,y);
+  if(x+mw>vw-pad) x=Math.max(pad,vw-mw-pad);
+  if(y+mh>vh-pad) y=Math.max(pad,vh-mh-pad);
+
+  menu.style.left=x+'px';
+  menu.style.top=y+'px';
+  menu.classList.add('active');
+  menu.setAttribute('aria-hidden','false');
+}
+
+function closeMarkMenu(){
+  const menu=document.getElementById('markMenu');
+  menu.classList.remove('active');
+  menu.setAttribute('aria-hidden','true');
+  G.markMenuIdx=-1;
+}
+
+function applyMarkChoice(val){
+  const i=G.markMenuIdx;
+  closeMarkMenu();
+  if(i<0||i===G.bossIdx) return;
+  const cell=G.board[i];
+  if(cell.revealed&&cell.brick!==0) return;
+  if(val===null||val==='CLEAR') cell.playerMark=null;
+  else if(val==='MINE') cell.playerMark='MINE';
+  else cell.playerMark=val;
+  const msg=(!val||val==='CLEAR')?'Mark cleared':(val==='MINE'?'Mark: 💣 Mine (P100)':'Mark: P'+val);
+  log(msg,'flag');
+  refreshGrid();
+  renderPlayer();
+}
+
+let _markMenuBuilt=false;
+function initMarkMenu(){
+  if(_markMenuBuilt) return;
+  _markMenuBuilt=true;
+  const grid=document.getElementById('markGrid');
+  for(let p=1;p<=11;p++){
+    const b=document.createElement('button');
+    b.type='button';
+    b.className='mm-btn';
+    b.textContent='P'+p;
+    b.addEventListener('click',()=>applyMarkChoice(p));
+    grid.appendChild(b);
+  }
+  const mineBtn=document.createElement('button');
+  mineBtn.type='button';
+  mineBtn.className='mm-btn mine';
+  mineBtn.textContent='Mine';
+  mineBtn.addEventListener('click',()=>applyMarkChoice('MINE'));
+  grid.appendChild(mineBtn);
+  document.getElementById('markClearBtn').onclick=()=>applyMarkChoice('CLEAR');
+}
+
+function onTileClick(i){
+  if(G.dead||G.won||G.lossReview) return;
+  const cell=G.board[i];
+  // ✅ HEART SHOULD ALWAYS WORK (even at 0 HP, even if unrevealed edge cases)
+  if(cell.hasHeart){
+    cell.hasHeart = false;
+    cell.revealed = true; // ensure it's visible
+    G.hp = G.maxHp;
+
+    log('❤️ Heart collected! Full heal!','heal');
+    flash(i,'fheal');
+
+    paintTile(i);
+    renderPlayer();
+    return;
+  }
+  // ── Chord: click a revealed clue when marks account for full raw sum (or middle-click) ──
+  if(G.gameStarted && cell.revealed && !cell.key && !cell.hasHeart && cell.brick<0 && i!==G.bossIdx){
+    recalcNeighbors();
+    const raw=G.board[i].neighborPower;
+    if(raw>0){
+      if(effectiveRemain(i)===0) chordReveal(i);
+      return;
+    }
+  }
+  // ── Boss click ──
+  if(i===G.bossIdx){
+    if(!G.gameStarted){log('⛏️ Click the pickaxe first!','info');return;}
+    if(G.lv<19){log(`👿 Dark Lord is too powerful! Need Lv.19 (13HP)!`,'dmg');return;}
+    G.killed++;G.won=true;
+    log('👿 DARK LORD DEFEATED! VICTORY!','win');
+    flash(i,'fkill');
+    paintTile(i);renderPlayer();
+    endGame(true,'');
+    return;
+  }
+
+  // ── Must start game first ──
+  if(!G.gameStarted){
+    if(i===G.startPickaxeIdx){
+      G.gameStarted=true;
+      activatePickaxe(i,true);
+    } else {
+      log('⛏️ Click the pickaxe tile to start!','info');
+    }
+    return;
+  }
+
+  // ── Mark mode (F): left-click opens same picker as right-click ──
+  if(G.flagMode && i!==G.bossIdx && (!cell.revealed||cell.brick===0)){
+    openMarkMenu(i);
+    return;
+  }
+
+ 
+
+  // ── EXP gem from destroyed brick — click to collect ──
+  if(cell.brick===4){
+    cell.brick=-1; // clear
+    gainXP(1);
+    log('✨ +1 EXP from brick ruins!','kill');
+    flash(i,'fkill');
+    // Now treat tile as empty revealed
+    cell.revealed=true;
+    paintTile(i);renderPlayer();
+    return;
+  }
+
+  // ── Brick interaction (brick=0 looks like normal stone) ──
+  if(cell.brick>=0 && cell.brick<4){
+    handleBrick(i);
+    return;
+  }
+
+  revealCell(i);
+}
+
+// ── BRICK HANDLER ──
+// brick=0: untouched hidden (looks like stone) → click1: reveal, no damage → brick=1
+// brick=1: revealed           → click2: -1hp → brick=2
+// brick=2: cracked            → click3: -1hp → brick=3
+// brick=3: crumbling          → click4: -1hp → brick=4 (destroyed, shows EXP gem)
+function handleBrick(i){
+  const cell=G.board[i];
+  if(cell.brick<0||cell.brick>=4) return;
+  if(cell.playerMark!=null) cell.playerMark=null;
+
+  if(cell.brick===0){
+    // First click: just reveal, no damage
+    cell.brick=1;
+    log('🧱 Brick revealed! Hit it to break through. (-1hp each hit)','brick');
+    flash(i,'fbrick');
+    paintTile(i);renderPlayer();
+    return;
+  }
+
+  // Clicks 2,3,4: deal 1 damage
+  G.hp=Math.max(0,G.hp-1);
+  cell.brick++;
+
+  if(cell.brick===4){
+    log('🧱 Brick destroyed! +1 EXP gem left behind.','brick');
+    flash(i,'fkill');
+  } else {
+    const msgs=['','','crack!','crumbling!'];
+    log(`🧱 Brick ${msgs[cell.brick]} -1hp (${4-cell.brick} hits left)`,'brick');
+    flash(i,'fbrick');
+  }
+  paintTile(i);renderPlayer();
+}
+
+// ── REVEAL CELL ──
+function revealCell(i){
+  const cell=G.board[i];
+  if(cell.playerMark!=null) cell.playerMark=null; // dig / chord clears mark
+  // Bricks are handled separately
+  if(cell.brick>=0) return;
+
+  // If already revealed but has content (monster/item) — still process it (pickaxe-exposed tiles)
+  const wasRevealed=cell.revealed;
+  if(!wasRevealed){
+    cell.revealed=true;G.dug++;
+  }
+
+  // Empty revealed tile with no content — nothing to do
+  if(!cell.key){
+    recalcNeighbors();
+    if(!wasRevealed && G.board[i].neighborPower===0) floodFill(i);
+    else refreshGrid();
+    renderPlayer();
+    return;
+  }
+
+  let key=cell.key;
+
+  // Mimic disguised as chest?
+  if(key==='CHEST'&&i===G.mimicIdx){
+    key='MIMIC';cell.key='MIMIC';
+    log('📦 It\'s a MIMIC! (P11 — 11dmg)','dmg');
+  }
+
+  const d=(key==='MIMIC')
+    ?{e:'📦',n:'Mimic',p:11,x:11,t:'mimic'}
+    :D[key];
+
+  if(!d){refreshGrid();renderPlayer();return;}
+
+  // Mine
+  if(d.t==='mine'){
+    if(G.mineSlayer){
+      cell.key=null;
+      log('💥 Mine disarmed! +3 EXP','kill');
+      gainXP(3);flash(i,'fkill');
+      refreshGrid();
+      renderPlayer();
+      return;
+    }
+    log('💥 MINE EXPLODES! Instant death!','lose');
+    G.hp=0;G.dead=true;
+    flash(i,'fdmg');refreshGrid();renderPlayer();
+    endGame(false,'a P100 Mine');
+    return;
+  }
+
+  // P0 safe items
+  if(d.p===0){
+    handleItem(i,key,d);
+    return;
+  }
+
+  // Monster fight
+  fightMonster(i,d);
+}
+
+// ── FIGHT MONSTER ──
+function fightMonster(i,d){
+  recalcNeighbors();
+  paintTile(i);
+  renderPlayer();
+  log(`👁️ ${d.e} ${d.n} — power ${d.p}!`,'info');
+  setTimeout(()=>{
+    if(G.dead||G.won) return;
+    const cell=G.board[i];
+    if(!cell.key) return;
+    if(d.p>G.hp){
+      log(`💀 ${d.n} (P${d.p}) overpowers you! DEAD!`,'lose');
+      G.hp=0;G.dead=true;
+      flash(i,'fdmg');refreshGrid();renderPlayer();
+      endGame(false,d.n);
+      return;
+    }
+    const dmg=d.p;
+    G.hp=Math.max(0,G.hp-dmg);
+    G.killed++;
+    gainXP(d.x);
+    log(`⚔ ${d.n} hits for ${dmg} — you strike back! +${d.x} exp`,'kill');
+    G.board[i].key=null;
+    flash(i,'fkill');
+    onKill(i,d);
+    refreshGrid();
+    renderPlayer();
+  },420);
+}
+
+// ── ON-KILL EFFECTS ──
+function onKill(i,d){
+  if(d.t==='vampire'){
+    // Drop heart on the SAME tile — it stays revealed but now has a heart
+    G.board[i].hasHeart=true;
+    G.board[i].key=null;
+    log('🧛 Vampire drops ❤️ on its tile! Click to collect.','heal');
+    // tile will repaint showing heart via paintTile(i) called by fightMonster
+  }
+  if(d.t==='dragon'){
+    G.mineSlayer=true;
+    G.board.forEach(c=>{if(!c.revealed&&c.key==='MINE')c.key='EXPITEM';});
+    log('🐉 Dragon down! MINE SLAYER active — all mines → +3 EXP!','spc');
+    refreshGrid();
+  }
+  if(d.t==='eye'){
+    G.mysterySet.forEach(j=>{G.board[j].mystery=false;});
+    G.mysterySet.clear();
+    log('👁️ Eye defeated! All mystery tiles unmasked!','spc');
+    refreshGrid();
+  }
+  if(d.t==='monkey'){
+    revealMonkeyArea(i);
+  }
+}
+
+// ── HANDLE ITEMS ──
+function handleItem(i,key,d){
+  if(key==='HEART'){
+    // Heart stays on tile, NOT instant heal
+    G.board[i].hasHeart=true;
+    G.board[i].key=null;
+    log('❤️ Heart on tile! Click again to collect.','heal');
+    flash(i,'fheal');
+    refreshGrid();renderPlayer();
+    return;
+  }
+  if(key==='PICKAXE'){
+    log('⛏️ Hidden pickaxe! Reveals 12 tiles!','spc');
+    activatePickaxe(i,false);
+    return;
+  }
+  if(key==='SPIDER0'){
+    let cnt=0;
+    G.board.forEach((c,j)=>{
+      if(!c.revealed&&c.key==='P1'){
+        c.playerMark='SPIDER';cnt++;
+      }
+    });
+    log(`🃏 Spider Card! Marked ${cnt} P1 spider tiles!`,'spc');
+    G.board[i].key=null;
+    flash(i,'fheal');
+    refreshGrid();renderPlayer();
+    return;
+  }
+  if(key==='MONKEY0'){
+    gainXP(9);
+    log('🐵 Monkey Card! +9 EXP','heal');
+    G.board[i].key=null;
+    flash(i,'fheal');
+    refreshGrid();renderPlayer();
+    return;
+  }
+  // Generic item (EXPITEM, chest, etc.)
+  gainXP(d.x);
+  log(`${d.e} ${d.n}! +${d.x} EXP`,'heal');
+  G.board[i].key=null;
+  flash(i,'fheal');
+  refreshGrid();renderPlayer();
+}
+
+// ── PICKAXE ACTIVATION ──
+function activatePickaxe(i,isStart){
+  // Clear pickaxe tile itself
+  G.board[i].revealed=true;
+  G.board[i].key=null;
+  G.board[i].isStartPickaxe=false;
+  if(isStart) G.startPickaxeIdx=-1;
+
+  const {r,c}=rc(i);
+  let cnt=0;
+  for(const [dr,dc] of CROSS12){
+    const nr=r+dr,nc=c+dc;
+    if(!valid(nr,nc)) continue;
+    const ni=idx(nr,nc);
+    if(ni===G.bossIdx) continue;
+    const nb=G.board[ni];
+    nb.playerMark=null;
+
+    // Brick: reveal to state 1 (no damage, same as first manual click)
+    if(nb.brick===0){
+      nb.brick=1;
+      cnt++;
+      continue;
+    }
+
+    if(nb.revealed) continue; // already revealed
+
+    // Reveal the tile — monsters, items, empty all get revealed
+    nb.revealed=true; G.dug++; cnt++;
+    recalcNeighbors();
+    if(!nb.key && G.board[ni].neighborPower===0) floodFill(ni);
+  }
+  refreshGrid();
+  log(`⛏️ Pickaxe reveals ${cnt} tiles!`,'spc');
+  renderPlayer();
+}
+
+// ── MONKEY AREA REVEAL ──
+function revealMonkeyArea(i){
+  const {r,c}=rc(i);
+  const found=[];
+  for(let dr=-2;dr<=2;dr++) for(let dc=-2;dc<=2;dc++){
+    const nr=r+dr,nc=c+dc;
+    if(!valid(nr,nc)) continue;
+    const nb=G.board[idx(nr,nc)];
+    if(!nb.revealed&&nb.key&&D[nb.key]) found.push(D[nb.key].n);
+  }
+  if(found.length) log('🐒 Monkey reveals: '+found.slice(0,6).join(', ')+(found.length>6?'…':''),'spc');
+  else log('🐒 Area is clear!','spc');
+}
+
+// ── EXP / LEVELING ──
+function gainXP(amount){
+  const maxLv=HP_TABLE.length-1;
+  if(G.lv>=maxLv) return;
+  G.xp+=amount;
+  renderPlayer(); // update bar + possibly show level-up button
+}
+
+// Called when player clicks the Level Up button
+function doLevelUp(){
+  const maxLv=HP_TABLE.length-1;
+  if(G.lv>=maxLv) return;
+  const need=XP_TABLE[G.lv];
+  if(G.xp<need) return;
+  G.xp-=need;
+  G.lv++;
+  G.maxHp=HP_TABLE[G.lv];
+  G.hp=G.maxHp; // full heal on level up
+  log(`✨ LEVEL UP! Now Lv.${G.lv}! HP:${G.maxHp} — Full heal!`,'lvl');
+  if(G.lv===19) log('👑 Lv.19! 13HP! Find the Dark Lord!','lvl');
+  renderPlayer();
+}
+
+// ── FLOOD FILL ──
+function floodFill(start){
+  const q=[start],vis=new Set([start]);
+  while(q.length){
+    const cur=q.shift();
+    const {r,c}=rc(cur);
+    for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++){
+      if(!dr&&!dc) continue;
+      const nr=r+dr,nc=c+dc;
+      if(!valid(nr,nc)) continue;
+      const ni=idx(nr,nc);
+      if(vis.has(ni)) continue;
+      const nb=G.board[ni];
+      if(nb.revealed||nb.key||nb.mystery||nb.hasHeart||nb.brick>=0||ni===G.bossIdx) continue;
+      vis.add(ni);
+      nb.playerMark=null;
+      nb.revealed=true;G.dug++;
+      recalcNeighbors();
+      if(G.board[ni].neighborPower===0) q.push(ni);
+    }
+  }
+  refreshGrid();
+}
+
+// ══════════════════════════════════════════════════════
+// END GAME
+// ══════════════════════════════════════════════════════
+function endGame(won,cause){
+  setTimeout(()=>{
+    const ov=document.getElementById('overlay');
+    const ti=document.getElementById('ovtitle');
+    const ms=document.getElementById('ovmsg');
+    if(won){
+      ov.classList.remove('lose-mode');
+      ti.className='ovtitle win';ti.textContent='⚔ VICTORY! ⚔';
+      ms.textContent=`The Dark Lord is slain!\nYou reached Level ${G.lv} with ${G.maxHp} HP.\nYou slew ${G.killed} monsters.\nThe dungeon is free at last!`;
+    } else {
+      ov.classList.add('lose-mode');
+      ti.className='ovtitle lose';ti.textContent='💀 DEFEATED 💀';
+      ms.textContent=`${cause} ended your quest.\nLv.${G.lv} · ${G.killed} kills\n\nReview the full spawn layout on the board above, then play again when ready.`;
+      G.lossReview=true;
+      G.debugPeek=false;
+      refreshGrid();
+    }
+    ov.classList.add('active');
+  },700);
+}
+
+// ══════════════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════════════
+function flash(i,cls){
+  const tiles=document.getElementById('board').children;
+  if(tiles[i]){
+    tiles[i].classList.add(cls);
+    setTimeout(()=>{if(tiles[i])tiles[i].classList.remove(cls);},420);
+  }
+}
+function log(msg,type='info'){
+  const bl=document.getElementById('blog');
+  const el=document.createElement('div');
+  el.className='le '+type;el.textContent=msg;
+  bl.appendChild(el);bl.scrollTop=bl.scrollHeight;
+  while(bl.children.length>130) bl.removeChild(bl.firstChild);
+}
+function toggleFlag(){G.flagMode=!G.flagMode;renderPlayer();}
+function showHelp(){document.getElementById('helpov').classList.add('active');}
+function closeOv(){
+  const ov=document.getElementById('overlay');
+  ov.classList.remove('active','lose-mode');
+}
+
+// ══════════════════════════════════════════════════════
+// PIXEL HERO
+// ══════════════════════════════════════════════════════
+function drawHero(){
+  const cv=document.getElementById('heroC');
+  if(!cv) return;
+  const ctx=cv.getContext('2d');
+  ctx.clearRect(0,0,96,96);
+  if(!_nakiPortraitImg){
+    _nakiPortraitImg=new Image();
+    _nakiPortraitImg.onload=()=>{
+      _nakiPortraitReady=true;
+      drawHero();
+    };
+    _nakiPortraitImg.onerror=()=>{_nakiPortraitReady=false;};
+    _nakiPortraitImg.src=NAKI_PORTRAIT_SRC;
+  }
+  if(_nakiPortraitReady){
+    const iw=_nakiPortraitImg.naturalWidth||96;
+    const ih=_nakiPortraitImg.naturalHeight||96;
+    const side=Math.min(iw,ih);
+    const sx=(iw-side)/2;
+    const sy=(ih-side)/2;
+    ctx.drawImage(_nakiPortraitImg,sx,sy,side,side,0,0,96,96);
+  }else{
+    ctx.fillStyle='#e8dcc8';
+    ctx.fillRect(0,0,96,96);
+  }
+  if(G.lv>=19){
+    ctx.save();ctx.shadowBlur=14;ctx.shadowColor='#f0c040';
+    ctx.strokeStyle='#f0c040';ctx.lineWidth=2;
+    ctx.strokeRect(2,2,92,92);ctx.restore();
+  } else if(G.hp<=0&&!G.dead){
+    ctx.save();ctx.shadowBlur=10;ctx.shadowColor='#ff8000';
+    ctx.strokeStyle='#ff8000';ctx.lineWidth=2;
+    ctx.strokeRect(2,2,92,92);ctx.restore();
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// KEYBOARD
+// ══════════════════════════════════════════════════════
+document.addEventListener('keydown',e=>{
+  if(e.key==='f'||e.key==='F') toggleFlag();
+  if(e.key==='r'||e.key==='R') startGame();
+  if(e.key==='l'||e.key==='L') doLevelUp();
+  if(e.code==='Backquote'&&!e.repeat){
+    e.preventDefault();
+    if(G.dead||G.won||G.lossReview) return;
+    G.debugPeek=!G.debugPeek;
+    refreshGrid();
+    log(G.debugPeek?'🐛 Debug peek: ON (all tiles)':'🐛 Debug peek: OFF','info');
+  }
+});
+
+// ══════════════════════════════════════════════════════
+// START
+// ══════════════════════════════════════════════════════
+function startGame(){
+  initG();createBoard();
+  document.getElementById('blog').innerHTML='';
+  log('⚔ New dungeon generated!','info');
+  log('⛏️ Click the pickaxe tile to start!','info');
+  log('The Dark Lord awaits at the center...','info');
+  initMarkMenu();
+  renderBestiary();
+  renderBoard();
+  renderPlayer();
+  const ov=document.getElementById('overlay');
+  ov.classList.remove('active','lose-mode');
+}
+
+if(!window.__dlDoc){
+  window.__dlDoc=true;
+  document.addEventListener('click',e=>{
+    if(e.target.closest('#markMenu')) return;
+    closeMarkMenu();
+  });
+}
+
+startGame();
+</script>
+</body>
+</html>
